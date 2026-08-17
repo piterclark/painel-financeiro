@@ -51,14 +51,21 @@ export function BarrasEmpilhadasMensal({ data }: Props) {
 
   return (
     <ChartContainer title="Evolução Mensal por Categoria" isEmpty={chartData.length === 0}>
-      <ResponsiveContainer width="100%" height={250}>
-        <BarChart data={chartData} margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
-          <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: '#64748b' }} />
-          <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: '#64748b' }} />
+      <ResponsiveContainer width="100%" height={260}>
+        <BarChart data={chartData} barCategoryGap="35%" margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
+          <CartesianGrid vertical={false} stroke="#1C2733" />
+          <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} axisLine={false} width={40} />
           <Tooltip content={<CustomTooltip />} />
-          {cats.map((cat) => (
-            <Bar key={cat} dataKey={cat} stackId="a" fill={catColors.get(cat) || '#6366f1'} radius={[0, 0, 0, 0]} />
+          {cats.map((cat, i) => (
+            <Bar
+              key={cat}
+              dataKey={cat}
+              stackId="a"
+              fill={catColors.get(cat) || '#6366f1'}
+              maxBarSize={48}
+              radius={i === cats.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+            />
           ))}
         </BarChart>
       </ResponsiveContainer>

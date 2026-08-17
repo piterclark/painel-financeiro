@@ -8,17 +8,18 @@ interface KpiCardProps {
   value: string;
   subtitle?: string;
   trend?: number;
-  color?: 'green' | 'red' | 'yellow' | 'blue' | 'purple' | 'default';
+  color?: 'green' | 'red' | 'yellow' | 'blue' | 'purple' | 'default' | 'muted';
   icon?: React.ReactNode;
 }
 
 const colorMap = {
-  green: 'text-emerald-400',
-  red: 'text-red-400',
-  yellow: 'text-amber-400',
-  blue: 'text-blue-400',
-  purple: 'text-violet-400',
+  green:   'text-emerald-400',
+  red:     'text-red-400',
+  yellow:  'text-amber-400',
+  blue:    'text-blue-400',
+  purple:  'text-violet-400',
   default: 'text-white',
+  muted:   'text-slate-500',
 };
 
 export function KpiCard({ title, value, subtitle, trend, color = 'default', icon }: KpiCardProps) {

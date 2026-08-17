@@ -42,7 +42,7 @@ export function KpiRow({ kpis }: KpiRowProps) {
       <KpiCard
         title="Em Atraso"
         value={formatBRL(kpis.emAtraso)}
-        color={kpis.emAtraso > 0 ? 'red' : 'default'}
+        color={kpis.emAtraso > 0 ? 'red' : 'muted'}
         icon={<AlertCircle size={16} />}
       />
       <KpiCard

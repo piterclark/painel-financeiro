@@ -37,14 +37,14 @@ export function ReceitaVsDespesa({ data }: Props) {
 
   return (
     <ChartContainer title="Receita vs Despesa" isEmpty={chartData.length === 0}>
-      <ResponsiveContainer width="100%" height={250}>
-        <ComposedChart data={chartData} margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={260}>
+        <ComposedChart data={chartData} barCategoryGap="35%" barGap={6} margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" />
-          <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: '#64748b' }} />
-          <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: '#64748b' }} />
+          <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} axisLine={false} />
+          <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: '#64748b' }} tickLine={false} axisLine={false} width={40} />
           <Tooltip content={<CustomTooltip />} />
-          <Bar dataKey="receita" name="Receita" fill="#10b981" opacity={0.85} radius={[3, 3, 0, 0]} />
-          <Bar dataKey="despesa" name="Despesa" fill="#ef4444" opacity={0.85} radius={[3, 3, 0, 0]} />
+          <Bar dataKey="receita" name="Receita" fill="#10b981" opacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={48} />
+          <Bar dataKey="despesa" name="Despesa" fill="#ef4444" opacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={48} />
           <Line dataKey="saldo" name="Saldo" stroke="#6366f1" dot={false} strokeWidth={2} />
         </ComposedChart>
       </ResponsiveContainer>
