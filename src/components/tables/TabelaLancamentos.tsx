@@ -4,33 +4,34 @@ import { useState } from 'react';
 import { Lancamento } from '@/types/financeiro';
 import { formatBRL, formatDate } from '@/lib/format';
 import { STATUS_COLORS } from '@/lib/colors';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, Pencil, Trash2, Plus } from 'lucide-react';
 
 interface Props {
   data: Lancamento[];
+  onNovo: () => void;
+  onEdit: (id: string) => void;
+  onDelete: (lancamento: Lancamento) => void;
+  onMarkPago: (id: string) => void;
 }
 
 type SortKey = 'dataCompetencia' | 'valor' | 'descricao' | 'status';
 
-export function TabelaLancamentos({ data }: Props) {
-  const [sortKey, setSortKey] = useState<SortKey>('dataCompetencia');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [page, setPage] = useState(0);
+export function TabelaLancamentos({ data, onNovo, onEdit, onDelete, onMarkPago }: Props) {
+  const [sortKey, setSortKey]           = useState<SortKey>('dataCompetencia');
+  const [sortDir, setSortDir]           = useState<'asc' | 'desc'>('desc');
+  const [page, setPage]                 = useState(0);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const PER_PAGE = 15;
 
   function handleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDir('desc');
-    }
+    if (sortKey === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('desc'); }
     setPage(0);
   }
 
   const sorted = [...data].sort((a, b) => {
-    let va: string | number = a[sortKey] ?? '';
-    let vb: string | number = b[sortKey] ?? '';
+    const va: string | number = a[sortKey] ?? '';
+    const vb: string | number = b[sortKey] ?? '';
     if (typeof va === 'string' && typeof vb === 'string') {
       return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
     }
@@ -38,24 +39,32 @@ export function TabelaLancamentos({ data }: Props) {
   });
 
   const totalPages = Math.ceil(sorted.length / PER_PAGE);
-  const paginated = sorted.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
+  const paginated  = sorted.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
 
   function SortIcon({ col }: { col: SortKey }) {
     if (sortKey !== col) return <ChevronUp size={12} className="text-slate-600" />;
-    return sortDir === 'asc' ? (
-      <ChevronUp size={12} className="text-violet-400" />
-    ) : (
-      <ChevronDown size={12} className="text-violet-400" />
-    );
+    return sortDir === 'asc'
+      ? <ChevronUp size={12} className="text-violet-400" />
+      : <ChevronDown size={12} className="text-violet-400" />;
   }
 
   return (
     <div className="bg-[#1a1f2e] border border-white/5 rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-white/5">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
         <h3 className="text-sm font-medium text-slate-400">
           Lançamentos <span className="text-slate-600">({data.length})</span>
         </h3>
+        <button
+          onClick={onNovo}
+          className="flex items-center gap-1.5 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-violet-400/10"
+        >
+          <Plus size={13} />
+          Novo lançamento
+        </button>
       </div>
+
+      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -78,12 +87,18 @@ export function TabelaLancamentos({ data }: Props) {
               ))}
               <th className="px-4 py-3 text-left text-slate-500 font-medium">Categoria</th>
               <th className="px-4 py-3 text-left text-slate-500 font-medium">Método</th>
+              <th className="px-4 py-3 w-[90px]" />
             </tr>
           </thead>
           <tbody>
             {paginated.map((l) => (
-              <tr key={l.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{formatDate(l.dataCompetencia)}</td>
+              <tr
+                key={l.id}
+                className="group border-b border-white/5 hover:bg-white/[0.02] transition-colors"
+              >
+                <td className="px-4 py-3 text-slate-400 whitespace-nowrap">
+                  {formatDate(l.dataCompetencia)}
+                </td>
                 <td className="px-4 py-3 text-slate-200 max-w-[200px] truncate">
                   {l.descricao}
                   {l.parcelaNumero && (
@@ -92,20 +107,36 @@ export function TabelaLancamentos({ data }: Props) {
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap font-medium tabular-nums"
-                  style={{ color: l.tipo === 'receita' ? '#10b981' : '#ef4444' }}>
+                <td
+                  className="px-4 py-3 whitespace-nowrap font-medium tabular-nums"
+                  style={{ color: l.tipo === 'receita' ? '#10b981' : '#ef4444' }}
+                >
                   {l.tipo === 'receita' ? '+' : '-'}{formatBRL(l.valor)}
                 </td>
                 <td className="px-4 py-3">
-                  <span
-                    className="px-2 py-0.5 rounded text-xs font-medium"
-                    style={{
-                      backgroundColor: STATUS_COLORS[l.status] + '20',
-                      color: STATUS_COLORS[l.status],
-                    }}
-                  >
-                    {l.status}
-                  </span>
+                  {l.status === 'previsto' ? (
+                    <button
+                      onClick={() => onMarkPago(l.id)}
+                      title="Marcar como pago"
+                      className="px-2 py-0.5 rounded text-xs font-medium transition-opacity hover:opacity-70"
+                      style={{
+                        backgroundColor: STATUS_COLORS[l.status] + '20',
+                        color: STATUS_COLORS[l.status],
+                      }}
+                    >
+                      {l.status}
+                    </button>
+                  ) : (
+                    <span
+                      className="px-2 py-0.5 rounded text-xs font-medium"
+                      style={{
+                        backgroundColor: STATUS_COLORS[l.status] + '20',
+                        color: STATUS_COLORS[l.status],
+                      }}
+                    >
+                      {l.status}
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   {l.categoriaNome && (
@@ -121,11 +152,51 @@ export function TabelaLancamentos({ data }: Props) {
                   )}
                 </td>
                 <td className="px-4 py-3 text-slate-500">{l.metodoNome || '—'}</td>
+
+                {/* Actions */}
+                <td className="px-4 py-3">
+                  {confirmDeleteId === l.id ? (
+                    <div className="flex items-center gap-2 text-xs">
+                      <button
+                        onClick={() => { onDelete(l); setConfirmDeleteId(null); }}
+                        className="text-red-400 hover:text-red-300 font-medium"
+                      >
+                        Excluir
+                      </button>
+                      <span className="text-slate-600">|</span>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="text-slate-500 hover:text-slate-300"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => onEdit(l.id)}
+                        title="Editar"
+                        className="p-1.5 text-slate-500 hover:text-slate-200 hover:bg-white/10 rounded transition-colors"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(l.id)}
+                        title="Excluir"
+                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-5 py-3 border-t border-white/5">
           <span className="text-xs text-slate-500">
