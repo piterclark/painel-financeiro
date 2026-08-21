@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { supabase } from '@/services/supabase';
 import { fetchCategorias, fetchCentrosCusto, fetchMetodos } from '@/services/analytics.service';
-import { inserirLancamento, atualizarLancamento, LancamentoInput } from '@/services/lancamentos.service';
+import { inserirLancamento, atualizarLancamento, LancamentoInput, InsertResult } from '@/services/lancamentos.service';
 import { Categoria, CentroCusto, MetodoPagamento } from '@/types/financeiro';
 
 export type SaveResult =
@@ -194,10 +194,16 @@ export function ModalLancamento({ open, onClose, onSaved, editId }: Props) {
       const ok = await atualizarLancamento(editId, input);
       setSaving(false);
       if (ok) { onSaved(input, { type: 'update', id: editId }); onClose(); }
+      else setErrors((p) => ({ ...p, _form: 'Erro ao atualizar lançamento. Tente novamente.' }));
     } else {
-      const newId = await inserirLancamento(input);
+      const result: InsertResult = await inserirLancamento(input);
       setSaving(false);
-      if (newId) { onSaved(input, { type: 'insert', id: newId }); onClose(); }
+      if ('id' in result) {
+        onSaved(input, { type: 'insert', id: result.id });
+        onClose();
+      } else {
+        setErrors((p) => ({ ...p, _form: result.error }));
+      }
     }
   }
 
@@ -430,7 +436,11 @@ export function ModalLancamento({ open, onClose, onSaved, editId }: Props) {
           </div>
 
           {/* ── Footer ── */}
-          <div className="flex gap-3 px-5 py-4 border-t border-white/5 flex-shrink-0">
+          <div className="flex-shrink-0 border-t border-white/5">
+            {errors._form && (
+              <p className="px-5 pt-3 text-xs text-red-400 text-center">{errors._form}</p>
+            )}
+          <div className="flex gap-3 px-5 py-4">
             <button
               type="button"
               onClick={onClose}
@@ -449,6 +459,7 @@ export function ModalLancamento({ open, onClose, onSaved, editId }: Props) {
             >
               {saving ? 'Salvando…' : editId ? 'Atualizar' : 'Salvar'}
             </button>
+          </div>
           </div>
         </form>
       </div>

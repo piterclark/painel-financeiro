@@ -14,10 +14,28 @@ export interface LancamentoInput {
   observacao?: string | null;
 }
 
-export async function inserirLancamento(input: LancamentoInput): Promise<string | null> {
+export type InsertResult = { id: string } | { error: string };
+
+function traduzirErro(msg: string): string {
+  if (msg.includes('row-level security') || msg.includes('permission denied') || msg.includes('403'))
+    return 'Sem permissão para salvar. Tente sair e entrar novamente.';
+  if (msg.includes('violates not-null') || msg.includes('null value'))
+    return 'Campo obrigatório faltando. Verifique os dados.';
+  if (msg.includes('duplicate key') || msg.includes('unique constraint'))
+    return 'Registro duplicado.';
+  if (msg.includes('network') || msg.includes('fetch'))
+    return 'Erro de conexão. Verifique sua internet.';
+  return 'Erro ao salvar lançamento. Tente novamente.';
+}
+
+export async function inserirLancamento(input: LancamentoInput): Promise<InsertResult> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Sessão expirada. Faça login novamente.' };
+
   const { data, error } = await supabase
     .from('lancamentos')
     .insert({
+      user_id: user.id,
       tipo: input.tipo,
       descricao: input.descricao,
       valor: input.valor,
@@ -33,8 +51,8 @@ export async function inserirLancamento(input: LancamentoInput): Promise<string 
     .select('id')
     .single();
 
-  if (error || !data) return null;
-  return data.id as string;
+  if (error || !data) return { error: traduzirErro(error?.message ?? '') };
+  return { id: data.id as string };
 }
 
 export async function atualizarLancamento(
