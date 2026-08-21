@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { FiltrosDashboard } from '@/types/financeiro';
 import { Search, X, RefreshCw } from 'lucide-react';
+import { useAutocomplete } from '@/hooks/useAutocomplete';
+import { AutocompleteDropdown } from '@/components/ui/AutocompleteDropdown';
+import type { DescricaoSugestao } from '@/services/sugestoes.service';
 
 interface Props {
   filtros: FiltrosDashboard;
@@ -11,6 +14,7 @@ interface Props {
   onBusca: (b: string) => void;
   onNatureza: (n?: 'fixo' | 'variavel') => void;
   onReset: () => void;
+  sugestoes?: DescricaoSugestao[];
 }
 
 const PRESETS: { key: FiltrosDashboard['preset']; label: string }[] = [
@@ -21,10 +25,12 @@ const PRESETS: { key: FiltrosDashboard['preset']; label: string }[] = [
   { key: 'ano', label: 'Este ano' },
 ];
 
-export function BarraFiltros({ filtros, onPreset, onRegime, onBusca, onNatureza, onReset }: Props) {
+export function BarraFiltros({ filtros, onPreset, onRegime, onBusca, onNatureza, onReset, sugestoes = [] }: Props) {
   const [localBusca, setLocalBusca] = useState(filtros.busca ?? '');
   const onBuscaRef = useRef(onBusca);
   onBuscaRef.current = onBusca;
+
+  const ac = useAutocomplete(sugestoes, localBusca);
 
   // Sync local value when parent resets (e.g. "Limpar" button)
   const prevGlobal = useRef(filtros.busca ?? '');
@@ -45,7 +51,15 @@ export function BarraFiltros({ filtros, onPreset, onRegime, onBusca, onNatureza,
   function clearBusca() {
     prevGlobal.current = '';
     setLocalBusca('');
+    ac.close();
     onBuscaRef.current(''); // immediate, no wait
+  }
+
+  function handleBuscaSelect(item: DescricaoSugestao) {
+    ac.close();
+    prevGlobal.current = item.descricao;
+    setLocalBusca(item.descricao);
+    onBuscaRef.current(item.descricao); // immediate, no debounce
   }
 
   return (
@@ -112,13 +126,27 @@ export function BarraFiltros({ filtros, onPreset, onRegime, onBusca, onNatureza,
             type="text"
             placeholder="Buscar lançamento..."
             value={localBusca}
-            onChange={(e) => setLocalBusca(e.target.value)}
+            onChange={(e) => {
+              setLocalBusca(e.target.value);
+              ac.openDropdown();
+            }}
+            onKeyDown={(e) => ac.handleKeyDown(e, handleBuscaSelect)}
+            onBlur={ac.close}
             className="w-full bg-white/5 border border-white/5 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-violet-500"
           />
           {localBusca && (
             <button onClick={clearBusca} className="absolute right-2 top-1/2 -translate-y-1/2">
               <X size={12} className="text-slate-500 hover:text-slate-300" />
             </button>
+          )}
+          {ac.isOpen && (
+            <AutocompleteDropdown
+              items={ac.items}
+              activeIndex={ac.activeIndex}
+              query={localBusca}
+              onSelect={handleBuscaSelect}
+              onMouseEnter={ac.setActiveIndex}
+            />
           )}
         </div>
       </div>

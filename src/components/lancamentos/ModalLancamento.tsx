@@ -6,6 +6,9 @@ import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { supabase } from '@/services/supabase';
 import { fetchCategorias, fetchCentrosCusto, fetchMetodos } from '@/services/analytics.service';
 import { inserirLancamento, atualizarLancamento, LancamentoInput, InsertResult } from '@/services/lancamentos.service';
+import { fetchSugestoesDescricao, DescricaoSugestao } from '@/services/sugestoes.service';
+import { useAutocomplete } from '@/hooks/useAutocomplete';
+import { AutocompleteDropdown } from '@/components/ui/AutocompleteDropdown';
 import { Categoria, CentroCusto, MetodoPagamento } from '@/types/financeiro';
 
 export type SaveResult =
@@ -59,6 +62,7 @@ export function ModalLancamento({ open, onClose, onSaved, editId }: Props) {
   const [metodos, setMetodos]               = useState<MetodoPagamento[]>([]);
   const [centros, setCentros]               = useState<CentroCusto[]>([]);
   const [fornecedores, setFornecedores]     = useState<{ id: string; nome: string }[]>([]);
+  const [sugestoes, setSugestoes]           = useState<DescricaoSugestao[]>([]);
 
   const valorRef = useRef<HTMLInputElement>(null);
 
@@ -84,16 +88,18 @@ export function ModalLancamento({ open, onClose, onSaved, editId }: Props) {
     setLoadingData(true);
 
     async function load() {
-      const [cats, mets, cents, { data: fornsData }] = await Promise.all([
+      const [cats, mets, cents, { data: fornsData }, sugs] = await Promise.all([
         fetchCategorias(),
         fetchMetodos(),
         fetchCentrosCusto(),
         supabase.from('fornecedores').select('id, nome').order('nome'),
+        fetchSugestoesDescricao(),
       ]);
       setCategorias(cats);
       setMetodos(mets);
       setCentros(cents);
       setFornecedores((fornsData ?? []) as { id: string; nome: string }[]);
+      setSugestoes(sugs);
 
       if (editId) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -147,9 +153,27 @@ export function ModalLancamento({ open, onClose, onSaved, editId }: Props) {
     load();
   }, [open, editId]);
 
+  // Must be called before any early return (React hooks rule)
+  const acDesc = useAutocomplete(sugestoes, descricao);
+
   if (!open) return null;
 
   const catsFiltradas = categorias.filter((c) => c.tipo === tipo);
+
+  function handleDescSelect(item: DescricaoSugestao) {
+    acDesc.close();
+    setDescricao(item.descricao);
+    if (errors.descricao) setErrors((p) => ({ ...p, descricao: '' }));
+    // Fill categoria only if compatible with current tipo
+    if (item.categoriaId && categorias.some((c) => c.id === item.categoriaId && c.tipo === tipo)) {
+      setCategoriaId(item.categoriaId);
+    }
+    // Fill metodo if available
+    if (item.metodoId) {
+      setMetodoId(item.metodoId);
+      setMais(true);
+    }
+  }
 
   function handleValorChange(e: React.ChangeEvent<HTMLInputElement>) {
     const digits = e.target.value.replace(/\D/g, '');
@@ -270,18 +294,32 @@ export function ModalLancamento({ open, onClose, onSaved, editId }: Props) {
             {/* Descrição */}
             <div>
               <label className={LABEL}>Descrição *</label>
-              <input
-                type="text"
-                value={descricao}
-                onChange={(e) => {
-                  setDescricao(e.target.value);
-                  if (errors.descricao) setErrors((p) => ({ ...p, descricao: '' }));
-                }}
-                className={INPUT}
-                placeholder="Ex: Aluguel, Salário, Assinatura…"
-                maxLength={255}
-                disabled={loadingData}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={descricao}
+                  onChange={(e) => {
+                    setDescricao(e.target.value);
+                    acDesc.openDropdown();
+                    if (errors.descricao) setErrors((p) => ({ ...p, descricao: '' }));
+                  }}
+                  onKeyDown={(e) => acDesc.handleKeyDown(e, handleDescSelect)}
+                  onBlur={acDesc.close}
+                  className={INPUT}
+                  placeholder="Ex: Aluguel, Salário, Assinatura…"
+                  maxLength={255}
+                  disabled={loadingData}
+                />
+                {acDesc.isOpen && (
+                  <AutocompleteDropdown
+                    items={acDesc.items}
+                    activeIndex={acDesc.activeIndex}
+                    query={descricao}
+                    onSelect={handleDescSelect}
+                    onMouseEnter={acDesc.setActiveIndex}
+                  />
+                )}
+              </div>
               {errors.descricao && <p className="text-xs text-red-400 mt-1">{errors.descricao}</p>}
             </div>
 

@@ -8,6 +8,7 @@ import {
   fetchFluxoCaixa, fetchOrcadoRealizado, fetchTopGastos, fetchPorMetodo,
   emptyKpis, computeMensalFromLancamentos, computeFluxoFromLancamentos,
 } from '@/services/analytics.service';
+import { fetchSugestoesDescricao, DescricaoSugestao } from '@/services/sugestoes.service';
 import {
   excluirLancamento, restaurarLancamento, marcarComoPago,
 } from '@/services/lancamentos.service';
@@ -44,6 +45,7 @@ export default function DashboardPage() {
   const [topGastos, setTopGastos]  = useState<Lancamento[]>([]);
   const [porMetodo, setPorMetodo]  = useState<{ nome: string; valor: number; percentual: number }[]>([]);
   const [loading, setLoading]      = useState(true);
+  const [sugestoes, setSugestoes]  = useState<DescricaoSugestao[]>([]);
 
   // ── modal + toast ────────────────────────────────────────────────────────
   const [modalOpen, setModalOpen]  = useState(false);
@@ -54,6 +56,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!authLoading && !session) router.replace('/login');
   }, [session, authLoading, router]);
+
+  // ── fetch autocomplete suggestions (once per session, not filter-dependent) ──
+  useEffect(() => {
+    if (!session) return;
+    fetchSugestoesDescricao().then(setSugestoes);
+  }, [session]);
 
   // ── keyboard shortcut N ────────────────────────────────────────────────
   useEffect(() => {
@@ -220,6 +228,7 @@ export default function DashboardPage() {
           onBusca={setBusca}
           onNatureza={setNatureza}
           onReset={resetFiltros}
+          sugestoes={sugestoes}
         />
         <KpiRow kpis={kpis} />
 
