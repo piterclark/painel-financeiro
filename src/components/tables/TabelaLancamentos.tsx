@@ -12,11 +12,12 @@ interface Props {
   onEdit: (id: string) => void;
   onDelete: (lancamento: Lancamento) => void;
   onMarkPago: (id: string) => void;
+  onOpenLixeira: () => void;
 }
 
 type SortKey = 'dataCompetencia' | 'valor' | 'descricao' | 'status';
 
-export function TabelaLancamentos({ data, onNovo, onEdit, onDelete, onMarkPago }: Props) {
+export function TabelaLancamentos({ data, onNovo, onEdit, onDelete, onMarkPago, onOpenLixeira }: Props) {
   const [sortKey, setSortKey]           = useState<SortKey>('dataCompetencia');
   const [sortDir, setSortDir]           = useState<'asc' | 'desc'>('desc');
   const [page, setPage]                 = useState(0);
@@ -55,13 +56,22 @@ export function TabelaLancamentos({ data, onNovo, onEdit, onDelete, onMarkPago }
         <h3 className="text-sm font-medium text-slate-400">
           Lançamentos <span className="text-slate-600">({data.length})</span>
         </h3>
-        <button
-          onClick={onNovo}
-          className="flex items-center gap-1.5 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-violet-400/10"
-        >
-          <Plus size={13} />
-          Novo lançamento
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onOpenLixeira}
+            title="Lixeira"
+            className="p-1.5 text-slate-600 hover:text-slate-400 hover:bg-white/5 rounded-lg transition-colors"
+          >
+            <Trash2 size={14} />
+          </button>
+          <button
+            onClick={onNovo}
+            className="flex items-center gap-1.5 text-xs font-medium text-violet-400 hover:text-violet-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-violet-400/10"
+          >
+            <Plus size={13} />
+            Novo lançamento
+          </button>
+        </div>
       </div>
 
       {/* Table */}

@@ -92,6 +92,36 @@ export async function restaurarLancamento(id: string): Promise<boolean> {
   return !error;
 }
 
+export interface LancamentoExcluido {
+  id: string;
+  tipo: 'despesa' | 'receita';
+  descricao: string;
+  valor: number;
+  dataCompetencia: string;
+  deletedAt: string;
+}
+
+export async function fetchLancamentosExcluidos(): Promise<LancamentoExcluido[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
+    .from('lancamentos')
+    .select('id, tipo, descricao, valor, data_competencia, deleted_at')
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false })
+    .limit(200);
+
+  if (error || !data) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any[]).map((r) => ({
+    id: r.id,
+    tipo: r.tipo as 'despesa' | 'receita',
+    descricao: r.descricao ?? '',
+    valor: Number(r.valor),
+    dataCompetencia: r.data_competencia,
+    deletedAt: r.deleted_at,
+  }));
+}
+
 export async function marcarComoPago(id: string): Promise<boolean> {
   const hoje = new Date().toISOString().slice(0, 10);
   const { error } = await supabase

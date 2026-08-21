@@ -30,6 +30,7 @@ import { TopGastos } from '@/components/charts/TopGastos';
 import { PorMetodoPagamento } from '@/components/charts/PorMetodoPagamento';
 import { TabelaLancamentos } from '@/components/tables/TabelaLancamentos';
 import { ModalLancamento } from '@/components/lancamentos/ModalLancamento';
+import { ModalLixeira } from '@/components/lancamentos/ModalLixeira';
 import { Toast } from '@/components/ui/Toast';
 
 export default function DashboardPage() {
@@ -48,9 +49,10 @@ export default function DashboardPage() {
   const [sugestoes, setSugestoes]  = useState<DescricaoSugestao[]>([]);
 
   // ── modal + toast ────────────────────────────────────────────────────────
-  const [modalOpen, setModalOpen]  = useState(false);
-  const [editId, setEditId]        = useState<string | null>(null);
-  const [toast, setToast]          = useState<{ message: string; onUndo?: () => void } | null>(null);
+  const [modalOpen, setModalOpen]      = useState(false);
+  const [editId, setEditId]            = useState<string | null>(null);
+  const [lixeiraOpen, setLixeiraOpen]  = useState(false);
+  const [toast, setToast]              = useState<{ message: string; onUndo?: () => void } | null>(null);
 
   // ── auth guard ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -261,6 +263,7 @@ export default function DashboardPage() {
           onEdit={handleEdit}
           onDelete={handleDelete}
           onMarkPago={handleMarkPago}
+          onOpenLixeira={() => setLixeiraOpen(true)}
         />
       </main>
 
@@ -279,6 +282,13 @@ export default function DashboardPage() {
         onClose={() => setModalOpen(false)}
         onSaved={handleSalvo}
         editId={editId}
+      />
+
+      {/* Lixeira */}
+      <ModalLixeira
+        open={lixeiraOpen}
+        onClose={() => setLixeiraOpen(false)}
+        onRestored={refetchAll}
       />
 
       {/* Toast */}
