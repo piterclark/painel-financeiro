@@ -281,6 +281,71 @@ export async function fetchPorMetodo(filtros: FiltrosDashboard) {
     .sort((a, b) => b.valor - a.valor);
 }
 
+// ─── client-side aggregators (used when busca is active) ─────────────────────
+
+export function computeMensalFromLancamentos(
+  lancamentos: Lancamento[],
+  regime: 'competencia' | 'caixa',
+): MensalCategoria[] {
+  const map = new Map<string, MensalCategoria>();
+
+  for (const l of lancamentos) {
+    const date = regime === 'caixa'
+      ? (l.dataPagamento ?? l.dataCompetencia)
+      : l.dataCompetencia;
+    const mes = date.slice(0, 7) + '-01';
+    const key = `${mes}|${l.tipo}|${l.categoriaId ?? ''}`;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        mesCompetencia: mes,
+        tipo: l.tipo,
+        categoriaId: l.categoriaId ?? '',
+        categoriaNome: l.categoriaNome ?? 'Sem categoria',
+        categoriaCor: l.categoriaCor ?? '#94a3b8',
+        natureza: l.natureza ?? 'variavel',
+        total: 0,
+        qtd: 0,
+      });
+    }
+
+    const row = map.get(key)!;
+    row.total += l.valor;
+    row.qtd += 1;
+  }
+
+  return Array.from(map.values()).sort(
+    (a, b) => a.mesCompetencia.localeCompare(b.mesCompetencia),
+  );
+}
+
+export function computeFluxoFromLancamentos(
+  lancamentos: Lancamento[],
+  regime: 'competencia' | 'caixa',
+  periodo: { inicio: string; fim: string },
+): FluxoCaixa[] {
+  const map = new Map<string, number>();
+
+  for (const l of lancamentos) {
+    const dia = regime === 'caixa'
+      ? (l.dataPagamento ?? l.dataCompetencia)
+      : l.dataCompetencia;
+    const delta = l.tipo === 'receita' ? l.valor : -l.valor;
+    map.set(dia, (map.get(dia) ?? 0) + delta);
+  }
+
+  const result: FluxoCaixa[] = [];
+  const d = new Date(periodo.inicio + 'T12:00:00Z');
+  const end = new Date(periodo.fim + 'T12:00:00Z');
+  while (d <= end) {
+    const dia = d.toISOString().slice(0, 10);
+    result.push({ dia, movimento: map.get(dia) ?? 0 });
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+
+  return result;
+}
+
 export async function fetchPorFornecedor(filtros: FiltrosDashboard) {
   let q = supabase
     .from('vw_lancamentos')

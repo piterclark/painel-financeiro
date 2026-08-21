@@ -6,7 +6,7 @@ import { useFiltros } from '@/hooks/useFiltros';
 import {
   fetchKpis, fetchLancamentos, fetchMensalCategoria,
   fetchFluxoCaixa, fetchOrcadoRealizado, fetchTopGastos, fetchPorMetodo,
-  emptyKpis,
+  emptyKpis, computeMensalFromLancamentos, computeFluxoFromLancamentos,
 } from '@/services/analytics.service';
 import {
   excluirLancamento, restaurarLancamento, marcarComoPago,
@@ -83,8 +83,13 @@ export default function DashboardPage() {
     ]).then(([k, l, m, f, o, t, p]) => {
       setKpis(k);
       setLancamentos(l);
-      setMensal(m);
-      setFluxo(f);
+      if (filtros.busca) {
+        setMensal(computeMensalFromLancamentos(l, filtros.regime));
+        setFluxo(computeFluxoFromLancamentos(l, filtros.regime, filtros.periodo));
+      } else {
+        setMensal(m);
+        setFluxo(f);
+      }
       setOrcado(o);
       setTopGastos(t);
       setPorMetodo(p);

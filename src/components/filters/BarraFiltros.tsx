@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { FiltrosDashboard } from '@/types/financeiro';
 import { Search, X, RefreshCw } from 'lucide-react';
 
@@ -21,6 +22,32 @@ const PRESETS: { key: FiltrosDashboard['preset']; label: string }[] = [
 ];
 
 export function BarraFiltros({ filtros, onPreset, onRegime, onBusca, onNatureza, onReset }: Props) {
+  const [localBusca, setLocalBusca] = useState(filtros.busca ?? '');
+  const onBuscaRef = useRef(onBusca);
+  onBuscaRef.current = onBusca;
+
+  // Sync local value when parent resets (e.g. "Limpar" button)
+  const prevGlobal = useRef(filtros.busca ?? '');
+  useEffect(() => {
+    const next = filtros.busca ?? '';
+    if (next !== prevGlobal.current) {
+      prevGlobal.current = next;
+      setLocalBusca(next);
+    }
+  }, [filtros.busca]);
+
+  // Propagate to global state after 400 ms of idle typing
+  useEffect(() => {
+    const t = setTimeout(() => onBuscaRef.current(localBusca), 400);
+    return () => clearTimeout(t);
+  }, [localBusca]);
+
+  function clearBusca() {
+    prevGlobal.current = '';
+    setLocalBusca('');
+    onBuscaRef.current(''); // immediate, no wait
+  }
+
   return (
     <div className="bg-[#1a1f2e] border border-white/5 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3">
       {/* Period presets */}
@@ -84,12 +111,12 @@ export function BarraFiltros({ filtros, onPreset, onRegime, onBusca, onNatureza,
           <input
             type="text"
             placeholder="Buscar lançamento..."
-            value={filtros.busca || ''}
-            onChange={(e) => onBusca(e.target.value)}
+            value={localBusca}
+            onChange={(e) => setLocalBusca(e.target.value)}
             className="w-full bg-white/5 border border-white/5 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-violet-500"
           />
-          {filtros.busca && (
-            <button onClick={() => onBusca('')} className="absolute right-2 top-1/2 -translate-y-1/2">
+          {localBusca && (
+            <button onClick={clearBusca} className="absolute right-2 top-1/2 -translate-y-1/2">
               <X size={12} className="text-slate-500 hover:text-slate-300" />
             </button>
           )}
