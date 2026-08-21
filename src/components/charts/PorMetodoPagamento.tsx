@@ -29,7 +29,7 @@ function CustomTooltip({ active, payload }: any) {
 export function PorMetodoPagamento({ data }: Props) {
   return (
     <ChartContainer title="Por Método de Pagamento" isEmpty={data.length === 0}>
-      <ResponsiveContainer width="100%" height={160}>
+      <ResponsiveContainer width="100%" height={260}>
         <PieChart>
           <Pie data={data} dataKey="valor" nameKey="nome" cx="50%" cy="50%" outerRadius={65} paddingAngle={2}>
             {data.map((_, i) => (

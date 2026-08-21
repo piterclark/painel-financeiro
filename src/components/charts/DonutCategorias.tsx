@@ -34,7 +34,7 @@ export function DonutCategorias({ data }: Props) {
   return (
     <ChartContainer title="Despesas por Categoria" isEmpty={chartData.length === 0}>
       <div className="flex flex-col items-center">
-        <ResponsiveContainer width="100%" height={220}>
+        <ResponsiveContainer width="100%" height={260}>
           <PieChart>
             <Pie
               data={chartData}

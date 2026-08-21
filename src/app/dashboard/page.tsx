@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useFiltros } from '@/hooks/useFiltros';
 import {
   fetchKpis, fetchLancamentos, fetchMensalCategoria,
-  fetchFluxoCaixa, fetchOrcadoRealizado, fetchTopGastos, fetchPorMetodo
+  fetchFluxoCaixa, fetchOrcadoRealizado, fetchTopGastos, fetchPorMetodo,
+  emptyKpis,
 } from '@/services/analytics.service';
+import { useAuth } from '@/context/AuthContext';
 import { Kpis, Lancamento, MensalCategoria, FluxoCaixa, OrcadoRealizado } from '@/types/financeiro';
+import { LogOut, Database } from 'lucide-react';
 
 import { KpiRow } from '@/components/kpi/KpiRow';
 import { BarraFiltros } from '@/components/filters/BarraFiltros';
@@ -21,18 +25,27 @@ import { PorMetodoPagamento } from '@/components/charts/PorMetodoPagamento';
 import { TabelaLancamentos } from '@/components/tables/TabelaLancamentos';
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { session, loading: authLoading, signOut } = useAuth();
   const { filtros, setPreset, setRegime, setBusca, setNatureza, resetFiltros } = useFiltros();
 
-  const [kpis, setKpis] = useState<Kpis | null>(null);
+  const [kpis, setKpis]           = useState<Kpis>(emptyKpis());
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
-  const [mensal, setMensal] = useState<MensalCategoria[]>([]);
-  const [fluxo, setFluxo] = useState<FluxoCaixa[]>([]);
-  const [orcado, setOrcado] = useState<OrcadoRealizado[]>([]);
-  const [topGastos, setTopGastos] = useState<Lancamento[]>([]);
-  const [porMetodo, setPorMetodo] = useState<{ nome: string; valor: number; percentual: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [mensal, setMensal]        = useState<MensalCategoria[]>([]);
+  const [fluxo, setFluxo]          = useState<FluxoCaixa[]>([]);
+  const [orcado, setOrcado]        = useState<OrcadoRealizado[]>([]);
+  const [topGastos, setTopGastos]  = useState<Lancamento[]>([]);
+  const [porMetodo, setPorMetodo]  = useState<{ nome: string; valor: number; percentual: number }[]>([]);
+  const [loading, setLoading]      = useState(true);
 
+  // ── auth guard ──────────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!authLoading && !session) router.replace('/login');
+  }, [session, authLoading, router]);
+
+  // ── data fetch ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!session) return;
     setLoading(true);
     Promise.all([
       fetchKpis(filtros),
@@ -52,7 +65,15 @@ export default function DashboardPage() {
       setPorMetodo(p);
       setLoading(false);
     });
-  }, [filtros]);
+  }, [filtros, session]);
+
+  if (authLoading || !session) {
+    return (
+      <div className="min-h-screen bg-[#0f1117] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0f1117] text-white">
@@ -65,9 +86,25 @@ export default function DashboardPage() {
               {filtros.periodo.inicio} até {filtros.periodo.fim}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${loading ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
-            <span className="text-xs text-slate-500">{loading ? 'Carregando...' : 'Atualizado'}</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${loading ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+              <span className="text-xs text-slate-500">{loading ? 'Carregando...' : 'Atualizado'}</span>
+            </div>
+            <button
+              onClick={() => router.push('/seed')}
+              title="Dados de teste"
+              className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              <Database size={16} />
+            </button>
+            <button
+              onClick={() => signOut().then(() => router.replace('/login'))}
+              title="Sair"
+              className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
       </header>
@@ -83,8 +120,8 @@ export default function DashboardPage() {
           onReset={resetFiltros}
         />
 
-        {/* KPIs */}
-        {kpis && <KpiRow kpis={kpis} />}
+        {/* KPIs — always rendered; shows zeros when no data */}
+        <KpiRow kpis={kpis} />
 
         {/* Row 1: Donut + Receita vs Despesa */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -103,7 +140,7 @@ export default function DashboardPage() {
           <OrcadoVsRealizado data={orcado} />
         </div>
 
-        {/* Row 4: Fluxo de caixa + Top Gastos + Por Método */}
+        {/* Row 4: Fluxo de caixa + Por Método */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2">
             <LinhaFluxoCaixa data={fluxo} />
