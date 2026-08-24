@@ -30,7 +30,7 @@ export default function LoginPage() {
   const [emailEnviado, setEmailEnviado] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && session) router.replace('/dashboard');
+    if (!authLoading && session) router.replace('/mes');
   }, [session, authLoading, router]);
 
   function trocarAba(nova: Aba) {

@@ -122,6 +122,14 @@ export async function fetchLancamentosExcluidos(): Promise<LancamentoExcluido[]>
   }));
 }
 
+export async function desmarcarPago(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('lancamentos')
+    .update({ status: 'previsto', data_pagamento: null })
+    .eq('id', id);
+  return !error;
+}
+
 export async function marcarComoPago(id: string): Promise<boolean> {
   const hoje = new Date().toISOString().slice(0, 10);
   const { error } = await supabase
