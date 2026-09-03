@@ -6,8 +6,7 @@ import Link from 'next/link';
 import { useFiltros } from '@/hooks/useFiltros';
 import {
   fetchKpis, fetchLancamentos, fetchMensalCategoria,
-  fetchFluxoCaixa, fetchOrcadoRealizado, fetchTopGastos, fetchPorMetodo,
-  emptyKpis, computeMensalFromLancamentos, computeFluxoFromLancamentos,
+  emptyKpis, computeMensalFromLancamentos,
 } from '@/services/analytics.service';
 import { fetchSugestoesDescricao, DescricaoSugestao } from '@/services/sugestoes.service';
 import {
@@ -16,19 +15,13 @@ import {
 import type { LancamentoInput } from '@/services/lancamentos.service';
 import type { SaveResult } from '@/components/lancamentos/ModalLancamento';
 import { useAuth } from '@/context/AuthContext';
-import { Kpis, Lancamento, MensalCategoria, FluxoCaixa, OrcadoRealizado } from '@/types/financeiro';
+import { Kpis, Lancamento, MensalCategoria } from '@/types/financeiro';
 import { LogOut, Database, Plus, CalendarDays } from 'lucide-react';
 
 import { KpiRow } from '@/components/kpi/KpiRow';
 import { BarraFiltros } from '@/components/filters/BarraFiltros';
 import { DonutCategorias } from '@/components/charts/DonutCategorias';
-import { BarrasEmpilhadasMensal } from '@/components/charts/BarrasEmpilhadasMensal';
 import { ReceitaVsDespesa } from '@/components/charts/ReceitaVsDespesa';
-import { FixoVsVariavel } from '@/components/charts/FixoVsVariavel';
-import { OrcadoVsRealizado } from '@/components/charts/OrcadoVsRealizado';
-import { LinhaFluxoCaixa } from '@/components/charts/LinhaFluxoCaixa';
-import { TopGastos } from '@/components/charts/TopGastos';
-import { PorMetodoPagamento } from '@/components/charts/PorMetodoPagamento';
 import { TabelaLancamentos } from '@/components/tables/TabelaLancamentos';
 import { ModalLancamento } from '@/components/lancamentos/ModalLancamento';
 import { ModalLixeira } from '@/components/lancamentos/ModalLixeira';
@@ -42,10 +35,6 @@ export default function DashboardPage() {
   const [kpis, setKpis]           = useState<Kpis>(emptyKpis());
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [mensal, setMensal]        = useState<MensalCategoria[]>([]);
-  const [fluxo, setFluxo]          = useState<FluxoCaixa[]>([]);
-  const [orcado, setOrcado]        = useState<OrcadoRealizado[]>([]);
-  const [topGastos, setTopGastos]  = useState<Lancamento[]>([]);
-  const [porMetodo, setPorMetodo]  = useState<{ nome: string; valor: number; percentual: number }[]>([]);
   const [loading, setLoading]      = useState(true);
   const [sugestoes, setSugestoes]  = useState<DescricaoSugestao[]>([]);
 
@@ -87,23 +76,10 @@ export default function DashboardPage() {
       fetchKpis(filtros),
       fetchLancamentos(filtros),
       fetchMensalCategoria(filtros),
-      fetchFluxoCaixa(filtros),
-      fetchOrcadoRealizado(),
-      fetchTopGastos(filtros),
-      fetchPorMetodo(filtros),
-    ]).then(([k, l, m, f, o, t, p]) => {
+    ]).then(([k, l, m]) => {
       setKpis(k);
       setLancamentos(l);
-      if (filtros.busca) {
-        setMensal(computeMensalFromLancamentos(l, filtros.regime));
-        setFluxo(computeFluxoFromLancamentos(l, filtros.regime, filtros.periodo));
-      } else {
-        setMensal(m);
-        setFluxo(f);
-      }
-      setOrcado(o);
-      setTopGastos(t);
-      setPorMetodo(p);
+      setMensal(filtros.busca ? computeMensalFromLancamentos(l, filtros.regime) : m);
       setLoading(false);
     });
   }, [filtros, session]);
@@ -123,7 +99,6 @@ export default function DashboardPage() {
   // ── handlers ────────────────────────────────────────────────────────────
   async function handleSalvo(input: LancamentoInput, result: SaveResult) {
     if (result.type === 'insert') {
-      // Optimistic KPI update
       const delta = input.tipo === 'receita' ? input.valor : -input.valor;
       setKpis((prev) => ({
         ...prev,
@@ -131,22 +106,18 @@ export default function DashboardPage() {
         totalDespesas: input.tipo === 'despesa' ? prev.totalDespesas + input.valor : prev.totalDespesas,
         saldo: prev.saldo + delta,
       }));
-      // Refetch lancamentos to get joined data (categoria name, etc.)
       fetchLancamentos(filtros).then(setLancamentos);
-
       showToast('Lançamento adicionado', async () => {
         await excluirLancamento(result.id);
         refetchAll();
       });
     } else {
-      // Update: accurate refetch
       await refetchAll();
       showToast('Lançamento atualizado');
     }
   }
 
   async function handleDelete(lancamento: Lancamento) {
-    // Optimistic remove + KPI update
     setLancamentos((prev) => prev.filter((l) => l.id !== lancamento.id));
     const delta = lancamento.tipo === 'receita' ? -lancamento.valor : lancamento.valor;
     setKpis((prev) => ({
@@ -155,9 +126,7 @@ export default function DashboardPage() {
       totalDespesas: lancamento.tipo === 'despesa' ? prev.totalDespesas - lancamento.valor : prev.totalDespesas,
       saldo: prev.saldo + delta,
     }));
-
     await excluirLancamento(lancamento.id);
-
     showToast('Lançamento excluído', async () => {
       await restaurarLancamento(lancamento.id);
       refetchAll();
@@ -171,7 +140,6 @@ export default function DashboardPage() {
     setLancamentos((prev) =>
       prev.map((l) => (l.id === id ? { ...l, status: 'pago', dataPagamento: hoje } : l))
     );
-    // Background KPI refresh (aPagar changes)
     fetchKpis(filtros).then(setKpis);
   }
 
@@ -248,22 +216,6 @@ export default function DashboardPage() {
             <ReceitaVsDespesa data={mensal} />
           </div>
         </div>
-
-        <BarrasEmpilhadasMensal data={mensal} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <FixoVsVariavel data={mensal} />
-          <OrcadoVsRealizado data={orcado} />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="lg:col-span-2">
-            <LinhaFluxoCaixa data={fluxo} />
-          </div>
-          <PorMetodoPagamento data={porMetodo} />
-        </div>
-
-        <TopGastos data={topGastos} />
 
         <TabelaLancamentos
           data={lancamentos}

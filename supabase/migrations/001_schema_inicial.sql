@@ -269,6 +269,7 @@ begin
     ('Impostos',    'despesa', 'fixo',     '#f97316', '🏛️'),
     ('Pessoal',     'despesa', 'variavel', '#14b8a6', '👤'),
     ('Serviços',    'despesa', 'variavel', '#a3a3a3', '🔧'),
+    ('Cartão de Crédito', 'despesa', 'variavel', '#7c3aed', '💳'),
     ('Outros',      'despesa', 'variavel', '#64748b', '📦'),
     ('Salário',     'receita', 'fixo',     '#22d3ee', '💰'),
     ('Freelance',   'receita', 'variavel', '#2dd4bf', '💼')

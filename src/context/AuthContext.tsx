@@ -21,12 +21,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Fallback: se getSession travar, libera o loading em 6s
+    const fallback = setTimeout(() => setLoading(false), 6000);
+
     supabase.auth.getSession().then(({ data }) => {
+      clearTimeout(fallback);
       setSession(data.session);
       setLoading(false);
+    }).catch(() => {
+      clearTimeout(fallback);
+      setLoading(false);
     });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => setSession(s));
-    return () => subscription.unsubscribe();
+    return () => { subscription.unsubscribe(); clearTimeout(fallback); };
   }, []);
 
   async function signOut() {
